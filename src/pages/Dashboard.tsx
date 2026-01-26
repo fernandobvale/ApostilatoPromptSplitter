@@ -70,13 +70,13 @@ export default function Dashboard() {
             ];
 
             let matches: RegExpMatchArray[] = [];
-            let patternName = '';
+            // patternName removed
 
             for (const pattern of patterns) {
                 const found = Array.from(fullText.matchAll(pattern.regex));
                 if (found.length > 0) {
                     matches = found;
-                    patternName = pattern.name;
+                    // patternName removed
                     console.log(`✓ Found ${found.length} module markers using pattern: ${pattern.name}`);
                     console.log('First 5 matches:', found.slice(0, 5).map(m => m[0]));
                     break;
@@ -381,7 +381,7 @@ Instruções Adicionais: Foque em explicar com clareza.`;
                                         <div className="card-content">
                                             <h3>{course.title}</h3>
                                             <p className="card-date">
-                                                Criado em {new Date(course.created_at).toLocaleDateString('pt-BR')}
+                                                Criado em {new Date(course.created_at || '').toLocaleDateString('pt-BR')}
                                             </p>
                                         </div>
                                         <div className="card-actions">
