@@ -250,8 +250,47 @@
 
 @media (min-width: 640px) {
 
-    .save-text,
     .btn-label {
         display: inline;
     }
+}
+
+/* Navigation Buttons */
+.lesson-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: var(--spacing-xl);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--color-border);
+}
+
+.lesson-navigation .btn-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md) var(--spacing-lg);
+    font-weight: 500;
+}
+
+.lesson-navigation .nav-left,
+.lesson-navigation .nav-right {
+    flex: 1;
+    display: flex;
+}
+
+.lesson-navigation .nav-left {
+    justify-content: flex-start;
+}
+
+.lesson-navigation .nav-right {
+    justify-content: flex-end;
+}
+
+.lesson-navigation-top {
+    margin-top: 0;
+    margin-bottom: var(--spacing-lg);
+    padding-top: 0;
+    padding-bottom: 0;
+    border-top: none;
 }

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Lesson } from '../lib/supabase';
-import { ArrowLeft, Copy, Save, Check, Download, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Copy, Save, Check, Download, Trash2 } from 'lucide-react';
 import './ProjectEditor.css';
 
 export default function ProjectEditor() {
@@ -239,6 +239,31 @@ export default function ProjectEditor() {
                 <main className="editor-content">
                     {currentLesson ? (
                         <>
+                            <div className="lesson-navigation lesson-navigation-top">
+                                <div className="nav-left">
+                                    {selectedLesson > 0 && (
+                                        <button
+                                            className="btn btn-secondary btn-nav"
+                                            onClick={() => setSelectedLesson(selectedLesson - 1)}
+                                        >
+                                            <ArrowLeft size={18} />
+                                            <span>Aula Anterior</span>
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="nav-right">
+                                    {selectedLesson < lessons.length - 1 && (
+                                        <button
+                                            className="btn btn-primary btn-nav"
+                                            onClick={() => setSelectedLesson(selectedLesson + 1)}
+                                        >
+                                            <span>Próxima Aula</span>
+                                            <ArrowRight size={18} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
                             <section className="content-section">
                                 <div className="section-header">
                                     <h2>Conteúdo da Aula {currentLesson.lesson_order}</h2>
@@ -295,6 +320,31 @@ export default function ProjectEditor() {
                                     <pre>{currentLesson.prompt}</pre>
                                 </div>
                             </section>
+
+                            <div className="lesson-navigation">
+                                <div className="nav-left">
+                                    {selectedLesson > 0 && (
+                                        <button
+                                            className="btn btn-secondary btn-nav"
+                                            onClick={() => setSelectedLesson(selectedLesson - 1)}
+                                        >
+                                            <ArrowLeft size={18} />
+                                            <span>Aula Anterior</span>
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="nav-right">
+                                    {selectedLesson < lessons.length - 1 && (
+                                        <button
+                                            className="btn btn-primary btn-nav"
+                                            onClick={() => setSelectedLesson(selectedLesson + 1)}
+                                        >
+                                            <span>Próxima Aula</span>
+                                            <ArrowRight size={18} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
                         </>
                     ) : (
                         <div className="empty-state">
