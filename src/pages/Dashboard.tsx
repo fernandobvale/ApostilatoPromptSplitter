@@ -184,10 +184,11 @@ Instruções Adicionais: Foque em explicar com clareza.`;
                 }
                 const lessonTitle = moduleMatch ? moduleMatch[1].split('\n')[0].trim() : `Aula ${index + 1}`;
 
-                // Replace only the variables in the template
+                // Replace variables in the template
                 const prompt = template
                     .replace(/\{course_title\}/g, courseTitle)
-                    .replace(/\{lesson_content\}/g, lessonTitle);
+                    .replace(/\{lesson_content\}/g, lessonTitle)
+                    .replace(/\{aula\}/g, (index + 1).toString());
 
                 console.log(`Lesson ${index + 1}:`);
                 console.log(`  Title: ${lessonTitle}`);

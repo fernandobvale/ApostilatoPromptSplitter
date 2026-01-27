@@ -145,7 +145,8 @@ Instruções Adicionais: Foque em explicar com clareza.`;
                         <h2>Templates de Prompt</h2>
                         <p className="section-description">
                             Personalize os templates utilizados para gerar prompts de IA. Use{' '}
-                            <code>{'{course_title}'}</code> e <code>{'{lesson_content}'}</code> como variáveis.
+                            <code>{'{course_title}'}</code>, <code>{'{lesson_content}'}</code> e{' '}
+                            <code>{'{aula}'}</code> como variáveis.
                         </p>
 
                         <div className="template-group">
