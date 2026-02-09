@@ -47,7 +47,15 @@ export default function Dashboard() {
             // Parse DOCX file
             const arrayBuffer = await file.arrayBuffer();
             const result = await mammoth.extractRawText({ arrayBuffer });
-            const fullText = result.value;
+            let fullText = result.value;
+
+            // Clean up text: remove excessive newlines caused by images
+            // detailed: match 3 or more newlines (with optional whitespace) and replace with 1 newline
+            // as requested by user ("leave only one line break")
+            fullText = fullText.replace(/\n\s*\n\s*\n+/g, '\n');
+
+            // Also clean up lines that are just whitespace
+            fullText = fullText.split('\n').map(line => line.trim()).join('\n');
 
             // Extract course title from first line of document (not filename)
             const firstLine = fullText.split('\n')[0].trim();
