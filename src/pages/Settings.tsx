@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { db } from '../lib/firebase';
+import type { PromptTemplate } from '../lib/firebase';
+import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
 import { ArrowLeft, Save } from 'lucide-react';
 import './Settings.css';
 
@@ -16,27 +18,27 @@ export default function Settings() {
 
     useEffect(() => {
         fetchTemplates();
-    }, []);
+    }, [user]);
 
     async function fetchTemplates() {
         try {
-            const { data, error } = await supabase
-                .from('prompt_templates')
-                .select('*')
-                .or(`user_id.is.null,user_id.eq.${user!.id}`);
+            const snapshot = await getDocs(collection(db, 'prompt_templates'));
+            const data: PromptTemplate[] = snapshot.docs.map(d => ({
+                id: d.id,
+                ...(d.data() as Omit<PromptTemplate, 'id'>)
+            }));
 
-            if (error) throw error;
+            const userId = user?.uid;
 
             // Find user templates first, fallback to system templates
-            const userFirst = data?.find((t) => t.template_type === 'first' && t.user_id === user!.id);
-            const userMiddle = data?.find((t) => t.template_type === 'middle' && t.user_id === user!.id);
-            const userLast = data?.find((t) => t.template_type === 'last' && t.user_id === user!.id);
+            const userFirst = data.find((t) => t.template_type === 'first' && t.user_id === userId);
+            const userMiddle = data.find((t) => t.template_type === 'middle' && t.user_id === userId);
+            const userLast = data.find((t) => t.template_type === 'last' && t.user_id === userId);
 
-            const systemFirst = data?.find((t) => t.template_type === 'first' && !t.user_id);
-            const systemMiddle = data?.find((t) => t.template_type === 'middle' && !t.user_id);
-            const systemLast = data?.find((t) => t.template_type === 'last' && !t.user_id);
+            const systemFirst = data.find((t) => t.template_type === 'first' && !t.user_id);
+            const systemMiddle = data.find((t) => t.template_type === 'middle' && !t.user_id);
+            const systemLast = data.find((t) => t.template_type === 'last' && !t.user_id);
 
-            // Default templates if not found in database
             const defaultTemplate = `Papel: Atue como um instrutor experiente e didático. O tom deve ser de uma aula formal, mas acessível.
 
 Estrutura da Aula:
@@ -64,18 +66,29 @@ Instruções Adicionais: Foque em explicar com clareza.`;
     async function handleSave() {
         setSaving(true);
         try {
-            // Upsert user templates
-            const templatesToUpsert = [
-                { user_id: user!.id, template_type: 'first', template: firstTemplate },
-                { user_id: user!.id, template_type: 'middle', template: middleTemplate },
-                { user_id: user!.id, template_type: 'last', template: lastTemplate },
-            ];
+            const userId = user?.uid || 'anonymous';
 
-            const { error } = await supabase.from('prompt_templates').upsert(templatesToUpsert, {
-                onConflict: 'user_id,template_type',
-            });
-
-            if (error) throw error;
+            // Save user templates with deterministic document IDs
+            await Promise.all([
+                setDoc(doc(db, 'prompt_templates', `${userId}_first`), {
+                    user_id: userId,
+                    template_type: 'first',
+                    template: firstTemplate,
+                    created_at: new Date().toISOString()
+                }),
+                setDoc(doc(db, 'prompt_templates', `${userId}_middle`), {
+                    user_id: userId,
+                    template_type: 'middle',
+                    template: middleTemplate,
+                    created_at: new Date().toISOString()
+                }),
+                setDoc(doc(db, 'prompt_templates', `${userId}_last`), {
+                    user_id: userId,
+                    template_type: 'last',
+                    template: lastTemplate,
+                    created_at: new Date().toISOString()
+                }),
+            ]);
 
             alert('Templates salvos com sucesso!');
         } catch (error) {
@@ -126,7 +139,7 @@ Instruções Adicionais: Foque em explicar com clareza.`;
                         <div className="profile-info">
                             <div className="info-item">
                                 <span className="label">Email:</span>
-                                <span>{userProfile?.email}</span>
+                                <span>{userProfile?.email || user?.email}</span>
                             </div>
                             <div className="info-item">
                                 <span className="label">Função:</span>

@@ -10,9 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.93.1",
     "@types/file-saver": "^2.0.7",
     "file-saver": "^2.0.5",
+    "firebase": "^12.18.0",
     "jszip": "^3.10.1",
     "lucide-react": "^0.563.0",
     "mammoth": "^1.11.0",

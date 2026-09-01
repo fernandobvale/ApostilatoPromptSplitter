@@ -1,7 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import type { Lesson } from '../lib/supabase';
+import { db } from '../lib/firebase';
+import type { Lesson, Course } from '../lib/firebase';
+import {
+    doc,
+    getDoc,
+    getDocs,
+    updateDoc,
+    deleteDoc,
+    collection,
+    query,
+    where,
+    writeBatch
+} from 'firebase/firestore';
 import { ArrowLeft, ArrowRight, Copy, Save, Check, Download, Trash2 } from 'lucide-react';
 import './ProjectEditor.css';
 
@@ -18,7 +29,9 @@ export default function ProjectEditor() {
     const [copiedPrompt, setCopiedPrompt] = useState(false);
 
     useEffect(() => {
-        fetchCourseData();
+        if (id) {
+            fetchCourseData();
+        }
     }, [id]);
 
     useEffect(() => {
@@ -28,24 +41,27 @@ export default function ProjectEditor() {
     }, [selectedLesson, lessons]);
 
     async function fetchCourseData() {
+        if (!id) return;
         try {
-            const { data: courseData, error: courseError } = await supabase
-                .from('courses')
-                .select('*')
-                .eq('id', id)
-                .single();
+            const courseDoc = await getDoc(doc(db, 'courses', id));
+            if (!courseDoc.exists()) {
+                alert('Curso não encontrado.');
+                navigate('/dashboard');
+                return;
+            }
 
-            if (courseError) throw courseError;
+            const courseData = courseDoc.data() as Course;
             setCourseTitle(courseData.title);
 
-            const { data: lessonsData, error: lessonsError } = await supabase
-                .from('lessons')
-                .select('*')
-                .eq('course_id', id)
-                .order('lesson_order');
+            const lessonsQuery = query(collection(db, 'lessons'), where('course_id', '==', id));
+            const snapshot = await getDocs(lessonsQuery);
+            const lessonsList: Lesson[] = snapshot.docs.map(d => ({
+                id: d.id,
+                ...(d.data() as Omit<Lesson, 'id'>)
+            }));
 
-            if (lessonsError) throw lessonsError;
-            setLessons(lessonsData || []);
+            lessonsList.sort((a, b) => a.lesson_order - b.lesson_order);
+            setLessons(lessonsList);
         } catch (error) {
             console.error('Error fetching course:', error);
         } finally {
@@ -54,18 +70,18 @@ export default function ProjectEditor() {
     }
 
     async function handleSave() {
+        if (!id) return;
         setSaving(true);
         try {
             // Update course title
-            await supabase.from('courses').update({ title: courseTitle }).eq('id', id);
+            await updateDoc(doc(db, 'courses', id), { title: courseTitle });
 
             // Update current lesson
             const currentLesson = lessons[selectedLesson];
             if (currentLesson) {
-                await supabase
-                    .from('lessons')
-                    .update({ edited_content: editedContent })
-                    .eq('id', currentLesson.id);
+                await updateDoc(doc(db, 'lessons', currentLesson.id), {
+                    edited_content: editedContent
+                });
 
                 // Update local state
                 const updatedLessons = [...lessons];
@@ -113,42 +129,37 @@ export default function ProjectEditor() {
 
         setLoading(true);
         try {
-            // Delete lesson
-            const { error } = await supabase.from('lessons').delete().eq('id', lessonId);
-            if (error) throw error;
+            // Delete lesson document
+            await deleteDoc(doc(db, 'lessons', lessonId));
 
-            // Remove from local state
+            // Remove from local state and reorder
             const remainingLessons = lessons.filter(l => l.id !== lessonId);
-
-            // Reorder remaining lessons
             const reorderedLessons = remainingLessons.map((lesson, index) => ({
                 ...lesson,
                 lesson_order: index + 1
             }));
 
-            // Update order in database
-            // We do this sequentially to ensure order is correct
-            for (const lesson of reorderedLessons) {
-                await supabase
-                    .from('lessons')
-                    .update({ lesson_order: lesson.lesson_order })
-                    .eq('id', lesson.id);
-            }
+            // Update order in Firestore with batch
+            const batch = writeBatch(db);
+            reorderedLessons.forEach((lesson) => {
+                batch.update(doc(db, 'lessons', lesson.id), {
+                    lesson_order: lesson.lesson_order
+                });
+            });
+            await batch.commit();
 
             setLessons(reorderedLessons);
 
-            // Adjust selected lesson if current one was deleted
+            // Adjust selected lesson index
             if (selectedLesson >= reorderedLessons.length) {
                 setSelectedLesson(Math.max(0, reorderedLessons.length - 1));
             } else {
-                // Force update content for new selected lesson (same index, different lesson)
                 if (reorderedLessons[selectedLesson]) {
                     setEditedContent(reorderedLessons[selectedLesson].edited_content || '');
                 } else {
                     setEditedContent('');
                 }
             }
-
         } catch (error) {
             console.error('Error deleting lesson:', error);
             alert('Erro ao excluir aula.');
@@ -156,7 +167,6 @@ export default function ProjectEditor() {
             setLoading(false);
         }
     }
-
 
     if (loading) {
         return (
@@ -214,7 +224,6 @@ export default function ProjectEditor() {
                                     onClick={() => setSelectedLesson(index)}
                                 >
                                     <span className="lesson-number">Aula {lesson.lesson_order}</span>
-                                    {/* Try to extract a short title if possible, otherwise use type */}
                                     <span className="lesson-type">
                                         {index === 0 ? 'Início' : index === lessons.length - 1 ? 'Fim' : 'Aula'}
                                     </span>

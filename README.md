@@ -1,73 +1,70 @@
-# React + TypeScript + Vite
+# Apostila to Prompt Splitter
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicação web para fatiar apostilas (`.docx`) em módulos e gerar prompts automáticos para IA, com armazenamento em nuvem gratuito e sem bloqueios por inatividade via **Google Firebase (Firestore + Auth)**.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🚀 Como Configurar o Firebase (2 Minutos)
 
-## React Compiler
+### 1. Criar Projeto no Firebase
+1. Acesse o [Firebase Console](https://console.firebase.google.com/).
+2. Clique em **Adicionar projeto** e dê um nome (ex: `apostila-splitter`).
+3. Desative o Google Analytics (opcional) e clique em **Criar projeto**.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 2. Ativar o Firestore Database
+1. No menu lateral, acesse **Build > Firestore Database**.
+2. Clique em **Criar banco de dados** e escolha a localização (ex: `southamerica-east1` - São Paulo ou `us-central1`).
+3. Em **Regras de segurança**, inicie no modo de teste ou configure as regras abaixo:
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true; // ou: if request.auth != null;
+    }
+  }
+}
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 3. Ativar Autenticação (Email/Senha)
+1. No menu lateral, acesse **Build > Authentication**.
+2. Clique em **Primeiros passos** e na aba **Sign-in method**, ative o provedor **E-mail/senha**.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### 4. Obter as Chaves Web do Projeto
+1. Na engrenagem de configurações do projeto (lado superior esquerdo) > **Configurações do projeto**.
+2. Na seção "Seus aplicativos", clique no ícone Web `</>`.
+3. Registre o app e copie os valores das credenciais para o seu arquivo `.env`:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```env
+VITE_FIREBASE_API_KEY=AIzaSy...
+VITE_FIREBASE_AUTH_DOMAIN=seu-projeto.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=seu-projeto
+VITE_FIREBASE_STORAGE_BUCKET=seu-projeto.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
+VITE_FIREBASE_APP_ID=1:123456789:web:abcdef
+```
+
+---
+
+## 🌐 Configuração na Vercel
+
+Ao fazer o deploy na [Vercel](https://vercel.com):
+1. Vá em **Project Settings > Environment Variables**.
+2. Adicione as 6 variáveis acima (`VITE_FIREBASE_API_KEY`, etc.).
+3. Faça o redeploy.
+
+---
+
+## 🛠️ Desenvolvimento Local
+
+```bash
+# Instalar dependências
+npm install
+
+# Rodar localmente
+npm run dev
+
+# Gerar build de produção
+npm run build
 ```

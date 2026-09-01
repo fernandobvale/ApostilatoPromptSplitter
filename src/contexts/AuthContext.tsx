@@ -1,11 +1,18 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
-import type { User } from '../lib/supabase';
+import {
+    onAuthStateChanged,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    signOut as firebaseSignOut,
+    type User as FirebaseUser
+} from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
+import type { User } from '../lib/firebase';
 
 interface AuthContextType {
-    user: SupabaseUser | null;
+    user: FirebaseUser | null;
     userProfile: User | null;
     loading: boolean;
     signIn: (email: string, password: string) => Promise<void>;
@@ -16,47 +23,41 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-    const [user, setUser] = useState<SupabaseUser | null>(null);
+    const [user, setUser] = useState<FirebaseUser | null>(null);
     const [userProfile, setUserProfile] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Check active session
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setUser(session?.user ?? null);
-            if (session?.user) {
-                fetchUserProfile(session.user.id);
-            } else {
-                setLoading(false);
-            }
-        });
-
-        // Listen for auth changes
-        const {
-            data: { subscription },
-        } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
-            if (session?.user) {
-                fetchUserProfile(session.user.id);
+        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+            setUser(currentUser);
+            if (currentUser) {
+                await fetchUserProfile(currentUser.uid, currentUser.email || '');
             } else {
                 setUserProfile(null);
                 setLoading(false);
             }
         });
 
-        return () => subscription.unsubscribe();
+        return () => unsubscribe();
     }, []);
 
-    async function fetchUserProfile(userId: string) {
+    async function fetchUserProfile(userId: string, email: string) {
         try {
-            const { data, error } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', userId)
-                .single();
+            const userDocRef = doc(db, 'users', userId);
+            const userDoc = await getDoc(userDocRef);
 
-            if (error) throw error;
-            setUserProfile(data);
+            if (userDoc.exists()) {
+                setUserProfile(userDoc.data() as User);
+            } else {
+                // Default profile fallback
+                const fallbackProfile: User = {
+                    id: userId,
+                    email,
+                    role: 'designer',
+                    created_at: new Date().toISOString()
+                };
+                setUserProfile(fallbackProfile);
+            }
         } catch (error) {
             console.error('Error fetching user profile:', error);
         } finally {
@@ -65,34 +66,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     async function signIn(email: string, password: string) {
-        const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
-        if (error) throw error;
+        await signInWithEmailAndPassword(auth, email, password);
     }
 
     async function signUp(email: string, password: string, role: User['role']) {
-        const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-        });
-        if (error) throw error;
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const createdUser = userCredential.user;
 
-        // Create user profile
-        if (data.user) {
-            const { error: profileError } = await supabase.from('users').insert({
-                id: data.user.id,
-                email: data.user.email!,
-                role,
-            });
-            if (profileError) throw profileError;
-        }
+        const profile: User = {
+            id: createdUser.uid,
+            email: createdUser.email || email,
+            role,
+            created_at: new Date().toISOString(),
+        };
+
+        await setDoc(doc(db, 'users', createdUser.uid), profile);
+        setUserProfile(profile);
     }
 
     async function signOut() {
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
+        await firebaseSignOut(auth);
     }
 
     const value = {
